@@ -1,0 +1,37 @@
+<select id="division" name="division_name" class="form-control">
+    <option value="">Select Division</option>
+    @foreach ($div as $division)
+        <option value="{{ $division->id }}">{{ $division->division_name }}</option>
+    @endforeach
+</select>
+
+<div id="subject-container">
+    @foreach ($div as $division)
+        <div class="subject-list" data-division="{{ $division->id }}" style="display: none;">
+            @foreach ($division->subjects as $subject)
+                <label>
+                    <input type="checkbox" name="subject[]" value="{{ $subject->id }}"> {{ $subject->subject_name }}
+                </label>
+            @endforeach
+        </div>
+    @endforeach
+</div>
+
+<script>
+    document.getElementById('division').addEventListener('change', function () {
+        let selectedDivision = this.value;
+        
+        // Hide all subject lists
+        document.querySelectorAll('.subject-list').forEach(function (list) {
+            list.style.display = 'none';
+        });
+
+        // Show the subject list for the selected division
+        if (selectedDivision) {
+            let subjectList = document.querySelector('.subject-list[data-division="' + selectedDivision + '"]');
+            if (subjectList) {
+                subjectList.style.display = 'block';
+            }
+        }
+    });
+</script>
