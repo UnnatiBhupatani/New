@@ -1,0 +1,146 @@
+fetch pivot data
+
+class Role extends Model
+{
+    public function permissions()
+    {
+        return $this->belongsToMany(Permission::class, 'role_permission', 'role_id', 'permission_id');
+    }
+}
+
+
+class Permission extends Model
+{
+    public function roles()
+    {
+        return $this->belongsToMany(Role::class, 'role_permission', 'permission_id', 'role_id');
+    }
+}
+
+
+
+
+public function index()
+{
+    $roles = Role::with('permissions')->get(); // Fetch all roles with their permissions
+    return view('roles.index', compact('roles'));
+}
+
+blade,
+<table border="1">
+    <thead>
+        <tr>
+            <th>Role Name</th>
+            <th>Permissions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach ($roles as $role)
+            <tr>
+                <td>{{ $role->name }}</td>
+                <td>
+                    @foreach ($role->permissions as $permission)
+                        {{ $permission->name }},
+                    @endforeach
+                </td>
+            </tr>
+        @endforeach
+    </tbody>
+</table>
+
+
+checkbox,
+
+
+namespace App\Http\Controllers;
+
+use App\Models\Permission;
+use App\Models\Role;
+use Illuminate\Http\Request;
+
+class RolePermissionController extends Controller
+{
+    public function fetch_rolePermission(Request $request)
+    {
+        // Fetch all roles and permissions
+        $roles = Role::all();
+        $permissions = Permission::all();
+        $role_permission = Role::with('permissions')->get();
+
+        // Get selected role's permissions (default empty if no role is selected)
+        $selectedRole = $request->input('role'); // Get role ID from request
+        $checkedPermissions = [];
+
+        if ($selectedRole) {
+            $role = Role::find($selectedRole);
+            if ($role) {
+                $checkedPermissions = $role->permissions()->pluck('id')->toArray(); // Fetch assigned permissions
+            }
+        }
+
+        return view('role_permission', compact('roles', 'permissions', 'role_permission', 'selectedRole', 'checkedPermissions'));
+    }
+
+    public function store(Request $request)
+    {
+        $role = Role::find($request->role);
+        if ($role) {
+            $role->permissions()->sync($request->permission ?? []);
+        }
+
+        return redirect('role_permission')->with('success', 'Permissions updated successfully.');
+    }
+}
+
+
+blade ,
+@include('layout.navbar')
+
+<div style="height: 50%; width: 40%; border: solid 1px rgb(182, 179, 179); padding:30px; margin-left:30%; margin-top:10%;">
+    <form name='role-form' id="role-form" method="GET" action="{{ url('role_permission') }}">
+        <h2 style="margin-left: 35%">Role Permissions</h2><br><br>
+
+        <select class="form-control" name="role" onchange="this.form.submit()">
+            <option value="">Select Role</option>
+            @foreach ($roles as $role)
+                <option value="{{ $role->id }}" {{ $selectedRole == $role->id ? 'selected' : '' }}>
+                    {{ $role->role_name }}
+                </option>
+            @endforeach
+        </select>
+        <br>
+    </form>
+
+    <form name='assign-permission-form' id="assign-permission-form" method="post" action="{{ url('store_role_per') }}">
+        @csrf
+
+        @foreach ($permissions as $per)
+            <input type="checkbox" name="permission[]" value="{{ $per->id }}"
+                @if(in_array($per->id, $checkedPermissions)) checked @endif>
+            {{ $per->permission_name }}<br>
+        @endforeach
+
+        <br>
+        <input type="hidden" name="role" value="{{ $selectedRole }}">
+        <button class="btn btn-success">Save Permissions</button><br>
+    </form>
+</div>
+
+<table border="1" class="table table-bordered mt-4">
+    <tr>
+        <th>Role</th>
+        <th>Permissions</th>
+    </tr>
+    @foreach($role_permission as $role)
+        <tr>
+            <td>{{ $role->role_name }}</td>
+            <td>
+                @foreach ($role->permissions as $permission)
+                    {{ $permission->permission_name }},
+                @endforeach
+            </td> 
+        </tr>
+    @endforeach
+</table>
+
+
