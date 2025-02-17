@@ -1,0 +1,71 @@
+student model,
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Foundation\Auth\User as Authenticatable;
+
+class Student extends Authenticatable
+{
+    // Add this method to check if the student has a specific permission
+    public function hasPermission($permissionName)
+    {
+        // Fetch the permissions from the role associated with the student
+        return $this->role->permissions()->where('name', $permissionName)->exists();
+    }
+
+    // Define the relationship to the role
+    public function role()
+    {
+        return $this->belongsTo(Role::class);
+    }
+}
+========================================================
+web.php 
+---------------
+Route::get('/dashboard', function () {
+    $user = auth()->user();
+
+    // Check if user has 'view_dashboard' permission
+    if ($user && $user->hasPermission('view_dashboard')) {
+        return view('dashboard');
+    }
+
+    return redirect('/unauthorized')->with('error', 'You do not have permission to access this page.');
+});
+
+Route::get('/manage-students', function () {
+    $user = auth()->user();
+
+    // Only allow access to Admin role
+    if ($user && $user->hasPermission('manage_students')) {
+        return view('manage-students');
+    }
+
+    return redirect('/unauthorized')->with('error', 'You do not have permission to access this page.');
+});
+============================================
+blade file,
+<!-- For Admins who can manage students -->
+@if(auth()->user()->hasPermission('manage_students'))
+    <a href="{{ route('manage-students') }}">Manage Students</a>
+@endif
+
+<!-- For Students who can view their profile -->
+@if(auth()->user()->hasPermission('view_profile'))
+    <a href="{{ route('view-profile') }}">View Profile</a>
+@endif
+===========================================
+unauthorized
+@extends('layouts.app')
+
+@section('content')
+    <div class="alert alert-danger">
+        <h4>Access Denied</h4>
+        <p>You do not have permission to access this page.</p>
+        <a href="/" class="btn btn-primary">Go Home</a>
+    </div>
+@endsection
+
+
