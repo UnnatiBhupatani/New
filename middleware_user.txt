@@ -1,0 +1,93 @@
+role model
+
+class Role extends Model
+{
+    public function permissions()
+    {
+        return $this->belongsToMany(Permission::class, 'role_permission');
+    }
+}
+====================
+permission model
+
+class Permission extends Model
+{
+    public function roles()
+    {
+        return $this->belongsToMany(Role::class, 'role_permission');
+    }
+}
+=====================
+student model
+
+class Student extends Authenticatable
+{
+    public function role()
+    {
+        return $this->belongsTo(Role::class);
+    }
+}
+=========================
+php artisan make:middleware CheckRolePermission
+==============================
+in middleware
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class CheckRolePermission
+{
+    public function handle(Request $request, Closure $next, $permission)
+    {
+        // Check if the user is logged in
+        if (!Auth::check()) {
+            return abort(403, 'Unauthorized');
+        }
+
+        // Get the logged-in user's role
+        $role = Auth::user()->role;
+
+        // Check if the role has the required permission
+        if ($role && $role->permissions()->where('name', $permission)->exists()) {
+            return $next($request);
+        }
+
+        // If the user doesn't have the required permission, abort with an error
+        return abort(403, 'Forbidden');
+    }
+}
+======================
+bootsrap/app.php
+
+use App\Http\Middleware\CheckRolePermission;
+
+return [
+    // Other configurations...
+
+    'middleware' => [
+        // Register custom middleware
+        'role_permission' => CheckRolePermission::class,
+    ],
+];
+======================
+web.php
+
+use App\Http\Middleware\CheckRolePermission;
+
+Route::middleware(['auth'])->group(function () {
+
+    // Only accessible by users with the 'view_dashboard' permission
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->middleware('role_permission:view_dashboard');
+    
+    // Only accessible by users with the 'edit_post' permission
+    Route::get('/edit-post', function () {
+        return view('edit-post');
+    })->middleware('role_permission:edit_post');
+
+    // More routes...
+});
